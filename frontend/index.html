@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지도 기반 위치 앱</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="여행추적기">
+    
+    <!-- 아이콘 -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 헤더 -->
+        <header class="header">
+            <h1>📍 실시간 위치 트래커</h1>
+            <div class="header-buttons">
+                <button id="getCurrentLocation" class="btn-primary">내 위치</button>
+                <button id="toggleTracking" class="btn-secondary">추적 시작</button>
+            </div>
+
+        <!-- 경로 시작 모달 -->
+        <div id="routeStartModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>여행 경로 시작</h3>
+                    <button id="closeRouteStartModal" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="routeName">경로 이름:</label>
+                        <input type="text" id="routeName" placeholder="예: 서울 여행, 제주도 드라이브">
+                    </div>
+                    <div class="form-group">
+                        <label for="routeDescription">설명:</label>
+                        <textarea id="routeDescription" placeholder="여행 설명을 입력하세요"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="routeColor">경로 색상:</label>
+                        <div class="color-picker">
+                            <input type="color" id="routeColor" value="#FF0000">
+                            <div class="color-presets">
+                                <div class="color-preset" data-color="#FF0000" style="background: #FF0000"></div>
+                                <div class="color-preset" data-color="#00FF00" style="background: #00FF00"></div>
+                                <div class="color-preset" data-color="#0000FF" style="background: #0000FF"></div>
+                                <div class="color-preset" data-color="#FFFF00" style="background: #FFFF00"></div>
+                                <div class="color-preset" data-color="#FF00FF" style="background: #FF00FF"></div>
+                                <div class="color-preset" data-color="#00FFFF" style="background: #00FFFF"></div>
+                                <div class="color-preset" data-color="#FFA500" style="background: #FFA500"></div>
+                                <div class="color-preset" data-color="#800080" style="background: #800080"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="confirmStartRoute" class="btn-primary">경로 시작</button>
+                        <button id="cancelStartRoute" class="btn-secondary">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 여행 경로 목록 -->
+        <div id="routesList" class="locations-list hidden">
+            <div class="list-header">
+                <h3>여행 경로 목록</h3>
+                <button id="closeRoutesList" class="btn-close">×</button>
+            </div>
+            <div id="routesContent" class="locations-content">
+                <!-- 경로 목록이 여기에 표시됩니다 -->
+            </div>
+        </div>
+        </header>
+
+        <!-- 지도 컨테이너 -->
+        <div id="map" class="map-container"></div>
+
+        <!-- 컨트롤 패널 -->
+        <div class="control-panel">
+            <div class="location-info">
+                <div class="info-item">
+                    <span class="label">위도:</span>
+                    <span id="currentLat">--</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">경도:</span>
+                    <span id="currentLng">--</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">정확도:</span>
+                    <span id="accuracy">--</span>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="saveLocation" class="btn-success">위치 저장</button>
+                <button id="loadLocations" class="btn-info">저장된 위치</button>
+                <button id="addMarker" class="btn-warning">마커 추가</button>
+                <button id="startRoute" class="btn-primary">경로 시작</button>
+                <button id="stopRoute" class="btn-danger hidden">경로 중지</button>
+                <button id="viewRoutes" class="btn-info">여행 경로</button>
+            </div>
+        </div>
+
+        <!-- 저장된 위치 목록 -->
+        <div id="locationsList" class="locations-list hidden">
+            <div class="list-header">
+                <h3>저장된 위치</h3>
+                <button id="closeLocationsList" class="btn-close">×</button>
+            </div>
+            <div id="locationsContent" class="locations-content">
+                <!-- 위치 목록이 여기에 표시됩니다 -->
+            </div>
+        </div>
+
+        <!-- 마커 추가 모달 -->
+        <div id="markerModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>마커 추가</h3>
+                    <button id="closeMarkerModal" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="markerName">장소명:</label>
+                        <input type="text" id="markerName" placeholder="장소명을 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="markerDescription">설명:</label>
+                        <textarea id="markerDescription" placeholder="설명을 입력하세요"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="markerCategory">카테고리:</label>
+                        <select id="markerCategory">
+                            <option value="general">일반</option>
+                            <option value="restaurant">음식점</option>
+                            <option value="cafe">카페</option>
+                            <option value="shopping">쇼핑</option>
+                            <option value="hospital">병원</option>
+                            <option value="school">학교</option>
+                            <option value="work">직장</option>
+                            <option value="home">집</option>
+                        </select>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="saveMarker" class="btn-primary">저장</button>
+                        <button id="cancelMarker" class="btn-secondary">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상태 표시 -->
+        <div id="statusMessage" class="status-message hidden"></div>
+        
+        <!-- 경로 추적 상태 표시 -->
+        <div id="trackingStatus" class="tracking-status hidden">
+            경로 추적 중...
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+    
+    <!-- 커스텀 JavaScript -->
+    <script src="js/app.js"></script>
+    
+    <!-- PWA Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('SW 등록 성공:', registration.scope);
+                    }, function(err) {
+                        console.log('SW 등록 실패:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

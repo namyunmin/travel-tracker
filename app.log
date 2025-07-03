@@ -1,0 +1,18 @@
+nohup: ignoring input
+현재 디렉토리: /home/ubuntu/travel-tracker
+백엔드 디렉토리: /home/ubuntu/travel-tracker/backend
+📦 백엔드 모듈 로드 중...
+Frontend directory: /home/ubuntu/travel-tracker/frontend
+Frontend exists: True
+Database path: /home/ubuntu/travel-tracker/location_data.db
+📊 데이터베이스 초기화...
+🔐 HTTPS 서버 시작...
+📍 접속 주소: https://16.171.133.35:5000
+⚠️ 브라우저 보안 경고 시 '고급' → '계속 진행' 클릭
+ * Serving Flask app 'backend.app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on https://127.0.0.1:5000
+ * Running on https://172.31.36.174:5000
+[33mPress CTRL+C to quit[0m

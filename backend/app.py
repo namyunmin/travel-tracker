@@ -12,12 +12,14 @@ CORS(app)  # 개발 중 CORS 이슈 해결
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
+DB_PATH = os.path.join(PROJECT_ROOT, 'location_data.db')
 print(f"Frontend directory: {FRONTEND_DIR}")
 print(f"Frontend exists: {os.path.exists(FRONTEND_DIR)}")
+print(f"Database path: {DB_PATH}")
 
 # 데이터베이스 초기화
 def init_db():
-    conn = sqlite3.connect('location_data.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # 위치 데이터 테이블 생성
@@ -84,7 +86,7 @@ def save_location():
         longitude = data.get('longitude')
         address = data.get('address', '')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -110,7 +112,7 @@ def start_route():
         description = data.get('description', '')
         color = data.get('color', '#FF0000')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # 기존 활성 경로 비활성화
@@ -148,7 +150,7 @@ def add_route_point():
         longitude = data.get('longitude')
         accuracy = data.get('accuracy')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # 활성 경로 ID 찾기
@@ -186,7 +188,7 @@ def stop_route():
         data = request.get_json()
         user_id = data.get('user_id')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -207,7 +209,7 @@ def get_routes():
     try:
         user_id = request.args.get('user_id')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -241,7 +243,7 @@ def get_route_points():
     try:
         route_id = request.args.get('route_id')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # 경로 정보 가져오기
@@ -292,7 +294,7 @@ def get_locations():
     try:
         user_id = request.args.get('user_id', 'anonymous')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -330,7 +332,7 @@ def add_marker():
         description = data.get('description', '')
         category = data.get('category', 'general')
         
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -350,7 +352,7 @@ def add_marker():
 @app.route('/api/get-markers', methods=['GET'])
 def get_markers():
     try:
-        conn = sqlite3.connect('location_data.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''

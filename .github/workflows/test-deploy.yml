@@ -1,0 +1,30 @@
+name: Simple Deploy Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Test SSH Connection
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_KEY }}
+        port: 22
+        timeout: 60
+        script: |
+          echo "✅ SSH 연결 성공!"
+          echo "현재 사용자: $(whoami)"
+          echo "현재 위치: $(pwd)"
+          echo "디스크 공간:"
+          df -h
+          echo "메모리 사용량:"
+          free -h
+          echo "Python 버전:"
+          python3 --version
+          echo "Git 버전:"
+          git --version

@@ -3,8 +3,6 @@ name: 자동 배포
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   test:
@@ -25,7 +23,6 @@ jobs:
     
     - name: 테스트 실행
       run: |
-        # 테스트 디렉토리가 있으면 테스트 실행
         if [ -d "tests" ]; then
           python -m pytest tests/ -v
         else
@@ -36,58 +33,47 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    timeout-minutes: 60
+    timeout-minutes: 30
     
     steps:
     - uses: actions/checkout@v3
     
+    - name: SSH 키 설정
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+    
     - name: EC2에 배포
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        timeout: 30m
-        command_timeout: 30m
-        script: |
+      run: |
+        ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
           cd /home/ubuntu/my_web_app
-          echo "📥 코드 업데이트 중..."
+          echo "📥 코드 업데이트 시작: $(date)"
+          
           git fetch origin && git reset --hard origin/main
+          echo "✅ 코드 업데이트 완료"
           
-          echo "🛑 기존 프로세스 중지..."
           sudo pkill -f "python" || true
-          sleep 5
+          echo "✅ 기존 프로세스 중지"
           
-          echo "🔧 가상환경 설정..."
           source venv/bin/activate
+          pip install -r requirements.txt -q
+          echo "✅ 의존성 설치 완료"
           
-          echo "📦 의존성 설치 중... (시간이 걸릴 수 있습니다)"
-          pip install --upgrade pip --quiet
-          pip install -r requirements.txt --quiet
-          
-          echo "🚀 서버 시작..."
           nohup python3 main.py > app.log 2>&1 &
+          echo "✅ 서버 시작"
           
-          echo "⏱️ 서버 시작 대기 중... (최대 3분)"
-          for i in {1..36}; do
-            if curl -s http://localhost:5000/api/get-markers > /dev/null 2>&1; then
-              echo "🎉 배포 성공! ($i번째 시도)"
-              exit 0
-            fi
-            echo "대기 중... ($i/36)"
-            sleep 5
-          done
+          sleep 10
           
-          echo "❌ 3분 대기 후에도 서버 응답 없음"
-          echo "로그 확인:"
-          tail -10 app.log 2>/dev/null || echo "로그 파일 없음"
-          exit 1
+          if curl -s http://localhost:5000/api/get-markers > /dev/null; then
+            echo "🎉 배포 성공: $(date)"
+          else
+            echo "❌ 배포 실패: $(date)"
+          fi
+        EOF
     
     - name: 배포 결과 확인
-      env:
-        HOST: ${{ secrets.EC2_HOST }}
       run: |
         echo "배포가 완료되었습니다!"
-        echo "애플리케이션 URL: http://$HOST:5000"
-        echo "헬스 체크: http://$HOST:5000/health"
+        echo "애플리케이션 URL: http://${{ secrets.EC2_HOST }}:5000"

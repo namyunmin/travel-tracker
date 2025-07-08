@@ -50,12 +50,20 @@ jobs:
         echo "$PRIVATE_KEY" > private_key
         chmod 600 private_key
         
+        # 디버깅: 환경 변수 및 키 파일 확인
+        echo "HOST: $HOST"
+        echo "USER: $USER"
+        echo "키 파일 생성 확인:"
+        ls -la private_key
+        echo "키 파일 첫 줄:"
+        head -n 1 private_key
+        
         # 호스트 키 확인 비활성화 (보안상 권장하지 않지만 CI/CD에서는 필요)
         mkdir -p ~/.ssh
         ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
         
         # 배포 스크립트 실행
-        ssh -i private_key ${USER}@${HOST} '
+        ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} '
           cd /home/ubuntu/my_web_app
           
           # Git 설정 및 pull

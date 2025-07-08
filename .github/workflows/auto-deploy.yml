@@ -48,8 +48,26 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: 22
         timeout: 300s
+        debug: true
         script: |
-          cd /home/ubuntu/my_web_app
+          echo "🔗 SSH 연결 성공!"
+          echo "현재 사용자: $(whoami)"
+          echo "홈 디렉토리: $(pwd)"
+          echo "서버 정보: $(uname -a)"
+          
+          # 프로젝트 디렉토리 확인/생성
+          if [ ! -d "/home/ubuntu/my_web_app" ]; then
+            echo "📂 프로젝트 디렉토리가 없습니다. 생성 중..."
+            mkdir -p /home/ubuntu/my_web_app
+            cd /home/ubuntu/my_web_app
+            git clone https://github.com/namyunmin/travel-tracker.git .
+          else
+            cd /home/ubuntu/my_web_app
+          fi
+          
+          echo "📁 현재 디렉토리: $(pwd)"
+          echo "📄 파일 목록:"
+          ls -la
           
           # Git 설정 및 pull
           git config --global --add safe.directory /home/ubuntu/my_web_app
@@ -58,24 +76,29 @@ jobs:
           
           # Python 환경 확인 및 설정
           if ! command -v python3.11 &> /dev/null; then
+            echo "🐍 Python 3.11 설치 중..."
             sudo apt update
             sudo apt install -y python3.11 python3.11-venv python3.11-dev
           fi
           
           # 기존 프로세스 중지
+          echo "🛑 기존 프로세스 중지 중..."
           sudo pkill -f "python.*main.py" || true
           sudo pkill -f "gunicorn.*main:app" || true
           sleep 2
           
           # 가상환경 생성 및 활성화
+          echo "🔧 가상환경 설정 중..."
           python3.11 -m venv venv || python3 -m venv venv
           source venv/bin/activate
           
           # 의존성 설치
+          echo "📦 의존성 설치 중..."
           pip install --upgrade pip
           pip install -r requirements.txt
           
           # 프로덕션 서버 시작
+          echo "🚀 서버 시작 중..."
           nohup python3 main.py > app.log 2>&1 &
           
           # 서버 시작 확인
@@ -85,6 +108,7 @@ jobs:
             curl -f http://localhost:5000/health || echo "❌ 헬스체크 실패"
           else
             echo "❌ 서버 시작 실패"
+            tail -10 app.log
             exit 1
           fi
     

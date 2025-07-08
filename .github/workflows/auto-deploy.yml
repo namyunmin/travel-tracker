@@ -75,6 +75,11 @@ jobs:
             sudo apt install -y python3.11 python3.11-venv python3.11-dev
           fi
           
+          # 기존 프로세스 중지
+          sudo pkill -f "python.*main.py" || true
+          sudo pkill -f "gunicorn.*main:app" || true
+          sleep 2
+          
           # 가상환경 생성 및 활성화
           python3.11 -m venv venv || python3 -m venv venv
           source venv/bin/activate
@@ -83,16 +88,18 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           
-          # 스크립트 실행 권한 부여
-          chmod +x *.sh
+          # 프로덕션 서버 시작
+          nohup python3 main.py > app.log 2>&1 &
           
-          # 프로세스 재시작
-          ./stop_production.sh || true
-          ./start_production.sh
-          
-          # 상태 확인
+          # 서버 시작 확인
           sleep 5
-          ./status.sh
+          if pgrep -f "python.*main.py" > /dev/null; then
+            echo "✅ 서버가 성공적으로 시작되었습니다."
+            curl -f http://localhost:5000/health || echo "❌ 헬스체크 실패"
+          else
+            echo "❌ 서버 시작 실패"
+            exit 1
+          fi
         '
         
         # 키 파일 삭제

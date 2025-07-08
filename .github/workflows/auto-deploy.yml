@@ -2,9 +2,9 @@ name: 자동 배포
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -35,7 +35,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
@@ -67,7 +67,7 @@ jobs:
           # Git 설정 및 pull
           git config --global --add safe.directory /home/ubuntu/my_web_app
           git fetch origin
-          git reset --hard origin/master || git reset --hard origin/main
+          git reset --hard origin/main
           
           # Python 환경 확인 및 설정
           if ! command -v python3.11 &> /dev/null; then

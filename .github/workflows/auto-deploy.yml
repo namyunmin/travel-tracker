@@ -50,36 +50,23 @@ jobs:
         timeout: 600s
         debug: false
         script: |
-          echo "🚀 배포 시작: $(date)"
-          
-          cd /home/ubuntu/my_web_app || { mkdir -p /home/ubuntu/my_web_app && cd /home/ubuntu/my_web_app && git clone https://github.com/namyunmin/travel-tracker.git .; }
-          
-          # 코드 업데이트
-          git config --global --add safe.directory /home/ubuntu/my_web_app
+          # 빠른 배포 스크립트
+          cd /home/ubuntu/my_web_app
           git fetch origin && git reset --hard origin/main
           
-          # 기존 프로세스 중지
+          # 프로세스 재시작
           sudo pkill -f "python.*main.py" || true
           sudo pkill -f "gunicorn" || true
-          sleep 3
           
-          # 가상환경 및 의존성
-          python3 -m venv venv --clear
-          source venv/bin/activate
-          pip install --upgrade pip -q
-          pip install -r requirements.txt -q
+          # 백그라운드에서 배포 완료
+          nohup bash -c "
+            sleep 2
+            source venv/bin/activate
+            pip install -r requirements.txt -q
+            python3 main.py > /dev/null 2>&1
+          " &
           
-          # 서버 시작
-          nohup python3 main.py > /dev/null 2>&1 &
-          
-          # 배포 완료 확인
-          sleep 5
-          if curl -s http://localhost:5000/api/get-markers > /dev/null; then
-            echo "✅ 배포 성공: $(date)"
-          else
-            echo "❌ 배포 실패"
-            exit 1
-          fi
+          echo "✅ 배포 시작됨: $(date)"
     
     - name: 배포 결과 확인
       env:

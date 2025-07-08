@@ -42,9 +42,9 @@ jobs:
     
     - name: EC2에 배포
       env:
-        PRIVATE_KEY: ${{ secrets.EC2_KEY }}
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
         HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
+        USER: ${{ secrets.EC2_USERNAME }}
       run: |
         # SSH 키 설정
         echo "$PRIVATE_KEY" > private_key

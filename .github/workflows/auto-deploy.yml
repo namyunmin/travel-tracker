@@ -47,14 +47,33 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: 22
-        timeout: 60s
-        sync: false
+        timeout: 900s
         script: |
           cd /home/ubuntu/my_web_app
+          echo "📥 코드 업데이트 중..."
           git fetch origin && git reset --hard origin/main
+          
+          echo "🛑 기존 프로세스 중지..."
           sudo pkill -f "python" || true
-          nohup bash -c "source venv/bin/activate && pip install -r requirements.txt -q && python3 main.py" > /dev/null 2>&1 &
-          echo "✅ 배포 완료"
+          sleep 3
+          
+          echo "🔧 가상환경 설정..."
+          source venv/bin/activate
+          pip install -r requirements.txt -q
+          
+          echo "🚀 서버 시작..."
+          nohup python3 main.py > app.log 2>&1 &
+          
+          echo "⏱️ 서버 시작 대기..."
+          sleep 10
+          
+          echo "✅ 배포 완료 확인..."
+          if curl -s http://localhost:5000/api/get-markers > /dev/null; then
+            echo "🎉 배포 성공!"
+          else
+            echo "❌ 배포 실패"
+            exit 1
+          fi
     
     - name: 배포 결과 확인
       env:

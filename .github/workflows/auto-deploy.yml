@@ -47,69 +47,37 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: 22
-        timeout: 300s
-        debug: true
+        timeout: 600s
+        debug: false
         script: |
-          echo "🔗 SSH 연결 성공!"
-          echo "현재 사용자: $(whoami)"
-          echo "홈 디렉토리: $(pwd)"
-          echo "서버 정보: $(uname -a)"
+          echo "🚀 배포 시작: $(date)"
           
-          # 프로젝트 디렉토리 확인/생성
-          if [ ! -d "/home/ubuntu/my_web_app" ]; then
-            echo "📂 프로젝트 디렉토리가 없습니다. 생성 중..."
-            mkdir -p /home/ubuntu/my_web_app
-            cd /home/ubuntu/my_web_app
-            git clone https://github.com/namyunmin/travel-tracker.git .
-          else
-            cd /home/ubuntu/my_web_app
-          fi
+          cd /home/ubuntu/my_web_app || { mkdir -p /home/ubuntu/my_web_app && cd /home/ubuntu/my_web_app && git clone https://github.com/namyunmin/travel-tracker.git .; }
           
-          echo "📁 현재 디렉토리: $(pwd)"
-          echo "📄 파일 목록:"
-          ls -la
-          
-          # Git 설정 및 pull
+          # 코드 업데이트
           git config --global --add safe.directory /home/ubuntu/my_web_app
-          git fetch origin
-          git reset --hard origin/main
-          
-          # Python 환경 확인
-          echo "🐍 Python 버전 확인:"
-          python3 --version
-          
-          # 필수 패키지 설치
-          sudo apt update
-          sudo apt install -y python3-pip python3-venv
+          git fetch origin && git reset --hard origin/main
           
           # 기존 프로세스 중지
-          echo "🛑 기존 프로세스 중지 중..."
           sudo pkill -f "python.*main.py" || true
-          sudo pkill -f "gunicorn.*main:app" || true
-          sleep 2
+          sudo pkill -f "gunicorn" || true
+          sleep 3
           
-          # 가상환경 생성 및 활성화
-          echo "🔧 가상환경 설정 중..."
-          python3 -m venv venv
+          # 가상환경 및 의존성
+          python3 -m venv venv --clear
           source venv/bin/activate
+          pip install --upgrade pip -q
+          pip install -r requirements.txt -q
           
-          # 의존성 설치
-          echo "📦 의존성 설치 중..."
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          # 서버 시작
+          nohup python3 main.py > /dev/null 2>&1 &
           
-          # 프로덕션 서버 시작
-          echo "🚀 서버 시작 중..."
-          nohup python3 main.py > app.log 2>&1 &
-          
-          # 서버 시작 확인
+          # 배포 완료 확인
           sleep 5
-          if pgrep -f "python.*main.py" > /dev/null; then
-            echo "✅ 서버가 성공적으로 시작되었습니다."
-            curl -f http://localhost:5000/health || echo "❌ 헬스체크 실패"
+          if curl -s http://localhost:5000/api/get-markers > /dev/null; then
+            echo "✅ 배포 성공: $(date)"
           else
-            echo "❌ 서버 시작 실패"
-            tail -10 app.log
+            echo "❌ 배포 실패"
             exit 1
           fi
     

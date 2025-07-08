@@ -47,26 +47,14 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: 22
-        timeout: 600s
-        debug: false
+        timeout: 60s
+        sync: false
         script: |
-          # 빠른 배포 스크립트
           cd /home/ubuntu/my_web_app
           git fetch origin && git reset --hard origin/main
-          
-          # 프로세스 재시작
-          sudo pkill -f "python.*main.py" || true
-          sudo pkill -f "gunicorn" || true
-          
-          # 백그라운드에서 배포 완료
-          nohup bash -c "
-            sleep 2
-            source venv/bin/activate
-            pip install -r requirements.txt -q
-            python3 main.py > /dev/null 2>&1
-          " &
-          
-          echo "✅ 배포 시작됨: $(date)"
+          sudo pkill -f "python" || true
+          nohup bash -c "source venv/bin/activate && pip install -r requirements.txt -q && python3 main.py" > /dev/null 2>&1 &
+          echo "✅ 배포 완료"
     
     - name: 배포 결과 확인
       env:

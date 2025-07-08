@@ -1,0 +1,91 @@
+name: 자동 배포
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Python 3.11 설정
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 의존성 설치
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 테스트 실행
+      run: |
+        python -m pytest tests/ -v
+        
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: EC2에 배포
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_KEY }}
+        HOST: ${{ secrets.EC2_HOST }}
+        USER: ${{ secrets.EC2_USER }}
+      run: |
+        # SSH 키 설정
+        echo "$PRIVATE_KEY" > private_key
+        chmod 600 private_key
+        
+        # 호스트 키 확인 비활성화 (보안상 권장하지 않지만 CI/CD에서는 필요)
+        mkdir -p ~/.ssh
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+        
+        # 배포 스크립트 실행
+        ssh -i private_key ${USER}@${HOST} '
+          cd /home/ubuntu/my_web_app
+          
+          # Git pull
+          git pull origin master || git pull origin main
+          
+          # Python 환경 확인 및 설정
+          if ! command -v python3.11 &> /dev/null; then
+            sudo apt update
+            sudo apt install -y python3.11 python3.11-venv python3.11-dev
+          fi
+          
+          # 가상환경 생성 및 활성화
+          python3.11 -m venv venv || python3 -m venv venv
+          source venv/bin/activate
+          
+          # 의존성 설치
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # 프로세스 재시작
+          ./stop_production.sh || true
+          ./start_production.sh
+          
+          # 상태 확인
+          sleep 5
+          ./status.sh
+        '
+        
+        # 키 파일 삭제
+        rm -f private_key
+    
+    - name: 배포 결과 확인
+      env:
+        HOST: ${{ secrets.EC2_HOST }}
+      run: |
+        echo "배포가 완료되었습니다!"
+        echo "애플리케이션 URL: http://$HOST:8000"
+        echo "헬스 체크: http://$HOST:8000/health"

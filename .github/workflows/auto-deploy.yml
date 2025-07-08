@@ -47,20 +47,18 @@ jobs:
         USER: ${{ secrets.EC2_USERNAME }}
       run: |
         # SSH 키 설정
-        echo "$PRIVATE_KEY" > private_key
+        echo "$PRIVATE_KEY" | sed 's/\\n/\n/g' > private_key
         chmod 600 private_key
         
-        # 디버깅: 환경 변수 및 키 파일 확인
-        echo "HOST: $HOST"
-        echo "USER: $USER"
-        echo "키 파일 생성 확인:"
-        ls -la private_key
-        echo "키 파일 첫 줄:"
-        head -n 1 private_key
+        # 키 파일 형식 확인
+        if ! ssh-keygen -y -e -f private_key > /dev/null 2>&1; then
+          echo "키 파일 형식에 문제가 있습니다. GitHub Secrets에서 키를 다시 확인해주세요."
+          exit 1
+        fi
         
-        # 호스트 키 확인 비활성화 (보안상 권장하지 않지만 CI/CD에서는 필요)
+        # 호스트 키 확인 자동 수락
         mkdir -p ~/.ssh
-        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null
         
         # 배포 스크립트 실행
         ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} '

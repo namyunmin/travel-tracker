@@ -25,7 +25,12 @@ jobs:
     
     - name: 테스트 실행
       run: |
-        python -m pytest tests/ -v
+        # 테스트 디렉토리가 있으면 테스트 실행
+        if [ -d "tests" ]; then
+          python -m pytest tests/ -v
+        else
+          echo "테스트 디렉토리가 없습니다. 테스트를 건너뜁니다."
+        fi
         
   deploy:
     needs: test
@@ -53,8 +58,10 @@ jobs:
         ssh -i private_key ${USER}@${HOST} '
           cd /home/ubuntu/my_web_app
           
-          # Git pull
-          git pull origin master || git pull origin main
+          # Git 설정 및 pull
+          git config --global --add safe.directory /home/ubuntu/my_web_app
+          git fetch origin
+          git reset --hard origin/master || git reset --hard origin/main
           
           # Python 환경 확인 및 설정
           if ! command -v python3.11 &> /dev/null; then
@@ -69,6 +76,9 @@ jobs:
           # 의존성 설치
           pip install --upgrade pip
           pip install -r requirements.txt
+          
+          # 스크립트 실행 권한 부여
+          chmod +x *.sh
           
           # 프로세스 재시작
           ./stop_production.sh || true

@@ -36,6 +36,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    timeout-minutes: 60
     
     steps:
     - uses: actions/checkout@v3
@@ -56,25 +57,32 @@ jobs:
           
           echo "🛑 기존 프로세스 중지..."
           sudo pkill -f "python" || true
-          sleep 3
+          sleep 5
           
           echo "🔧 가상환경 설정..."
           source venv/bin/activate
-          pip install -r requirements.txt -q
+          
+          echo "📦 의존성 설치 중... (시간이 걸릴 수 있습니다)"
+          pip install --upgrade pip --quiet
+          pip install -r requirements.txt --quiet
           
           echo "🚀 서버 시작..."
           nohup python3 main.py > app.log 2>&1 &
           
-          echo "⏱️ 서버 시작 대기..."
-          sleep 10
+          echo "⏱️ 서버 시작 대기 중... (최대 3분)"
+          for i in {1..36}; do
+            if curl -s http://localhost:5000/api/get-markers > /dev/null 2>&1; then
+              echo "🎉 배포 성공! ($i번째 시도)"
+              exit 0
+            fi
+            echo "대기 중... ($i/36)"
+            sleep 5
+          done
           
-          echo "✅ 배포 완료 확인..."
-          if curl -s http://localhost:5000/api/get-markers > /dev/null; then
-            echo "🎉 배포 성공!"
-          else
-            echo "❌ 배포 실패"
-            exit 1
-          fi
+          echo "❌ 3분 대기 후에도 서버 응답 없음"
+          echo "로그 확인:"
+          tail -10 app.log 2>/dev/null || echo "로그 파일 없음"
+          exit 1
     
     - name: 배포 결과 확인
       env:

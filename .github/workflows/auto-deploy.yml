@@ -41,27 +41,14 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: EC2에 배포
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USERNAME }}
-      run: |
-        # SSH 키 설정
-        echo "$PRIVATE_KEY" | sed 's/\\n/\n/g' > private_key
-        chmod 600 private_key
-        
-        # 키 파일 형식 확인
-        if ! ssh-keygen -y -e -f private_key > /dev/null 2>&1; then
-          echo "키 파일 형식에 문제가 있습니다. GitHub Secrets에서 키를 다시 확인해주세요."
-          exit 1
-        fi
-        
-        # 호스트 키 확인 자동 수락
-        mkdir -p ~/.ssh
-        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null
-        
-        # 배포 스크립트 실행
-        ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} '
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
+        timeout: 300s
+        script: |
           cd /home/ubuntu/my_web_app
           
           # Git 설정 및 pull
@@ -100,15 +87,11 @@ jobs:
             echo "❌ 서버 시작 실패"
             exit 1
           fi
-        '
-        
-        # 키 파일 삭제
-        rm -f private_key
     
     - name: 배포 결과 확인
       env:
         HOST: ${{ secrets.EC2_HOST }}
       run: |
         echo "배포가 완료되었습니다!"
-        echo "애플리케이션 URL: http://$HOST:8000"
-        echo "헬스 체크: http://$HOST:8000/health"
+        echo "애플리케이션 URL: http://$HOST:5000"
+        echo "헬스 체크: http://$HOST:5000/health"
